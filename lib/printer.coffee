@@ -34,56 +34,60 @@ module.exports = AtomPrinter =
 
     content.onbeforeunload = close
     content.onafterprint = close
-    container = content.document.createElement('pre')
-    root = container.createShadowRoot()
-    root.innerHTML = @getEditorHTML()
+
+    content.document.body.className = document.body.className
+    @addThemeStyles(content.document)
+
+    container = content.document.createElement("pre")
+    container.id = "lines"
+
+    @addEditorContent(container)
+
     content.document.body.appendChild(container)
     content.print()
 
-  getEditorHTML: ->
+  addEditorContent: (container) ->
     editor = atom.workspace.getActiveTextEditor()
     text = editor.getText()
     grammar = editor.getGrammar()
 
     lines = grammar.tokenizeLines(text)
-    scopeStack = []
-    html = @getThemeHTML()
 
     for line in lines
+      lineElement = container.ownerDocument.createElement("div")
+      lineElement.className = "line"
+      container.appendChild(lineElement)
+
+      scopeStack = [lineElement]
+
       for token in line
-        html += @updateScopeStack(scopeStack, token.scopes)
-        html += token.getValueAsHtml(hasIndentGuide: false)
-      html += "\n"
+        @updateScopeStack(scopeStack, token.scopes)
+        scopeStack[scopeStack.length - 1].appendChild(container.ownerDocument.createTextNode(token.value))
 
-    console.log html
-    html
-
-  getThemeHTML: ->
+  addThemeStyles: (doc) ->
     themes = atom.themes.getActiveThemes()
     syntaxThemes = themes.filter (theme) -> theme.metadata.theme is 'syntax'
-    "<style>#{sheet[1] for sheet in syntaxTheme.stylesheets for syntaxTheme in syntaxThemes}</style>"
+    for syntaxTheme in syntaxThemes
+      for sheet in syntaxTheme.stylesheets
+        style = doc.createElement("style")
+        style.textContent = sheet[1]
+        doc.head.appendChild(style)
 
   updateScopeStack: (scopeStack, desiredScopeDescriptor) ->
-    html = ""
-
     # Find a common prefix
     for scope, i in desiredScopeDescriptor
-      break unless scopeStack[i] is desiredScopeDescriptor[i]
+      break unless i + 1 < scopeStack.length && scopeStack[i + 1]._scope is desiredScopeDescriptor[i]
 
-    # Pop scopeDescriptor until we're at the common prefx
-    until scopeStack.length is i
-      html += @popScope(scopeStack)
+    # Pop any extra scopes
+    scopeStack.splice(i + 1)
 
     # Push onto common prefix until scopeStack equals desiredScopeDescriptor
     for j in [i...desiredScopeDescriptor.length]
-      html += @pushScope(scopeStack, desiredScopeDescriptor[j])
-
-    html
-
-  popScope: (scopeStack) ->
-    scopeStack.pop()
-    "</span>"
+      @pushScope(scopeStack, desiredScopeDescriptor[j])
 
   pushScope: (scopeStack, scope) ->
-    scopeStack.push(scope)
-    "<span class=\"#{scope.replace(/\.+/g, ' ')}\">"
+    element = scopeStack[0].ownerDocument.createElement("span")
+    element.className = scope.replace(/\.+/g, ' ')
+    element._scope = scope
+    scopeStack[scopeStack.length - 1].appendChild(element)
+    scopeStack.push(element)
