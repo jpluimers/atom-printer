@@ -1,5 +1,4 @@
 {CompositeDisposable} = require 'atom'
-_ = null
 
 module.exports = AtomPrinter =
   atomPrinterView: null
@@ -19,8 +18,6 @@ module.exports = AtomPrinter =
   serialize: ->
 
   print: ->
-    _ ?= require 'lodash'
-
     iframe = document.createElement('iframe')
 
     iframe.style.visibility = 'hidden'
@@ -63,8 +60,8 @@ module.exports = AtomPrinter =
 
   getThemeHTML: ->
     themes = atom.themes.getActiveThemes()
-    syntaxTheme = _.find themes, (theme) -> theme.metadata.theme is 'syntax'
-    "<style>#{sheet[1] for sheet in syntaxTheme.stylesheets}</style>"
+    syntaxThemes = themes.filter (theme) -> theme.metadata.theme is 'syntax'
+    "<style>#{sheet[1] for sheet in syntaxTheme.stylesheets for syntaxTheme in syntaxThemes}</style>"
 
   updateScopeStack: (scopeStack, desiredScopeDescriptor) ->
     html = ""
