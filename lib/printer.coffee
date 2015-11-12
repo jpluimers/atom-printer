@@ -27,14 +27,7 @@ module.exports = AtomPrinter =
 
     document.body.appendChild(iframe)
 
-    close = ->
-      document.body.removeChild(iframe)
-
     content = iframe.contentWindow
-
-    content.onbeforeunload = close
-    content.onafterprint = close
-
     content.document.body.className = document.body.className
     @addThemeStyles(content.document)
 
@@ -45,6 +38,7 @@ module.exports = AtomPrinter =
 
     content.document.body.appendChild(container)
     content.print()
+    document.body.removeChild(iframe)
 
   addEditorContent: (container) ->
     editor = atom.workspace.getActiveTextEditor()
